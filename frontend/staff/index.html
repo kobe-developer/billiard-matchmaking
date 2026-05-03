@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Billiard Pointer — Staff Panel</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+
+  <body class="gradient-bg min-h-screen text-white">
+
+    <!-- ===================== LOGIN SCREEN ===================== -->
+    <div id="screen-login" class="min-h-screen flex items-center justify-center p-4">
+      <div class="w-full max-w-sm">
+        <div class="text-center mb-8">
+          <div class="text-4xl mb-3">🛡️</div>
+          <h1 class="text-2xl font-bold">Staff Panel</h1>
+          <p class="text-slate-400 text-sm mt-1">Billiard Pointer Admin</p>
+        </div>
+        <div class="card-glass rounded-2xl p-6 space-y-4">
+          <div>
+            <label class="block text-sm text-slate-400 mb-1.5">Username</label>
+            <input id="staff-username" type="text" placeholder="Staff username" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500
+                 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all" />
+          </div>
+          <div>
+            <label class="block text-sm text-slate-400 mb-1.5">Password</label>
+            <input id="staff-password" type="password" placeholder="Password staff" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500
+                 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all" />
+          </div>
+          <button onclick="doStaffLogin()"
+            class="w-full py-3.5 rounded-xl font-semibold bg-violet-600 hover:bg-violet-700 transition-colors">
+            Masuk sebagai Staff
+          </button>
+          <p id="login-err" class="text-red-400 text-sm text-center hidden"></p>
+        </div>
+        <p class="text-center mt-4 text-slate-500 text-sm">
+          <a href="index.html" class="hover:text-slate-300 transition-colors">← Kembali ke Portal Player</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- ===================== STAFF APP ===================== -->
+    <div id="screen-app" class="hidden min-h-screen flex flex-col">
+
+      <!-- Header -->
+      <header
+        class="card-glass border-b border-white/5 px-4 md:px-6 py-3.5 flex items-center justify-between sticky top-0 z-30">
+        <div class="flex items-center gap-3">
+          <span class="text-xl">🛡️</span>
+          <span class="font-bold">Staff Panel</span>
+          <span class="badge bg-violet-500/20 text-violet-300 border border-violet-500/30">Admin</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <button onclick="openEventResetModal()" class="text-xs px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300 border border-red-500/30
+               hover:bg-red-500/30 transition-colors hidden md:block">
+            🔄 Event Reset
+          </button>
+          <button onclick="doLogout()"
+            class="bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white px-4 py-1.5 rounded-lg transition-all text-sm font-medium border border-red-600/30 hover:border-red-600">
+            Keluar
+          </button>
+        </div>
+      </header>
+
+      <!-- Tabs -->
+      <div class="card-glass border-b border-white/5 px-4 md:px-6">
+        <div class="flex gap-1 overflow-x-auto py-2">
+          <button onclick="switchTab('players')" data-tab="players"
+            class="staff-tab px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors text-slate-400">
+            👥 Manajemen Pemain
+          </button>
+          <button onclick="switchTab('match')" data-tab="match"
+            class="staff-tab px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors text-slate-400">
+            ⚔️ Input Hasil Match
+          </button>
+          <button onclick="switchTab('history')" data-tab="history"
+            class="staff-tab px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors text-slate-400">
+            📋 Riwayat Match
+          </button>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <main class="flex-1 overflow-hidden">
+
+        <!-- ===== TAB: PLAYER MANAGEMENT ===== -->
+        <div id="tab-players" class="hidden h-full flex flex-col">
+          <div class="px-4 md:px-6 py-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+            <h2 class="text-lg font-bold">Daftar Pemain</h2>
+            <div class="flex gap-2 w-full sm:w-auto">
+              <input id="search-player" oninput="filterPlayers()" type="text" placeholder="Cari nama / username..."
+                class="flex-1 sm:w-64 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white
+                   placeholder-slate-500 focus:border-violet-500 transition-all" />
+              <button onclick="loadPlayers()"
+                class="px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-sm">
+                🔄
+              </button>
+            </div>
+          </div>
+
+          <div class="flex-1 overflow-auto px-4 md:px-6 pb-6">
+            <div class="card-glass rounded-2xl overflow-hidden">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-white/5 text-slate-400 text-xs uppercase tracking-wider">
+                    <th class="px-4 py-3 text-left">Pemain</th>
+                    <th class="px-4 py-3 text-center hidden sm:table-cell">HC</th>
+                    <th class="px-4 py-3 text-center hidden md:table-cell">Poin</th>
+                    <th class="px-4 py-3 text-center hidden md:table-cell">W/L</th>
+                    <th class="px-4 py-3 text-center hidden lg:table-cell">Limit</th>
+                    <th class="px-4 py-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="players-tbody">
+                  <tr>
+                    <td colspan="6" class="text-center py-8 text-slate-400">Memuat...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== TAB: INPUT MATCH RESULT ===== -->
+        <div id="tab-match" class="hidden p-4 md:p-6 max-w-2xl">
+          <h2 class="text-lg font-bold mb-6">Input Hasil Match</h2>
+
+          <div class="card-glass rounded-2xl p-6 space-y-6">
+            <!-- Player A -->
+            <div>
+              <label class="block text-sm text-slate-400 mb-2">Pemain A</label>
+              <div class="relative">
+                <input id="search-a" type="text" placeholder="Cari nama pemain A..." oninput="searchPlayer('a')"
+                  autocomplete="off" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500
+                     focus:border-violet-500 transition-all" />
+                <div id="dropdown-a" class="hidden absolute top-full left-0 right-0 mt-1 card-glass rounded-xl
+              border border-white/10 z-20 max-h-40 overflow-y-auto shadow-2xl"></div>
+              </div>
+              <div id="selected-a" class="hidden mt-2 p-3 bg-white/5 rounded-xl flex items-center justify-between">
+                <div>
+                  <span id="selected-a-name" class="font-semibold"></span>
+                  <span id="selected-a-hc" class="ml-2 text-xs px-1.5 py-0.5 rounded-full font-semibold"></span>
+                </div>
+                <button onclick="clearPlayer('a')" class="text-slate-400 hover:text-white text-xs">✕ Hapus</button>
+              </div>
+            </div>
+
+            <!-- Player B -->
+            <div>
+              <label class="block text-sm text-slate-400 mb-2">Pemain B</label>
+              <div class="relative">
+                <input id="search-b" type="text" placeholder="Cari nama pemain B..." oninput="searchPlayer('b')"
+                  autocomplete="off" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500
+                     focus:border-violet-500 transition-all" />
+                <div id="dropdown-b" class="hidden absolute top-full left-0 right-0 mt-1 card-glass rounded-xl
+              border border-white/10 z-20 max-h-40 overflow-y-auto shadow-2xl"></div>
+              </div>
+              <div id="selected-b" class="hidden mt-2 p-3 bg-white/5 rounded-xl flex items-center justify-between">
+                <div>
+                  <span id="selected-b-name" class="font-semibold"></span>
+                  <span id="selected-b-hc" class="ml-2 text-xs px-1.5 py-0.5 rounded-full font-semibold"></span>
+                </div>
+                <button onclick="clearPlayer('b')" class="text-slate-400 hover:text-white text-xs">✕ Hapus</button>
+              </div>
+            </div>
+
+            <!-- Winner Selection -->
+            <div>
+              <label class="block text-sm text-slate-400 mb-3">Pemenang</label>
+              <div class="grid grid-cols-2 gap-3">
+                <button id="winner-btn-a" onclick="selectWinner('a')"
+                  class="py-4 rounded-xl border-2 border-white/10 text-sm font-semibold transition-all hover:border-violet-500/50"
+                  disabled>
+                  <div class="text-2xl mb-1">🏆</div>
+                  <div id="winner-label-a" class="text-slate-400">Pemain A</div>
+                </button>
+                <button id="winner-btn-b" onclick="selectWinner('b')"
+                  class="py-4 rounded-xl border-2 border-white/10 text-sm font-semibold transition-all hover:border-violet-500/50"
+                  disabled>
+                  <div class="text-2xl mb-1">🏆</div>
+                  <div id="winner-label-b" class="text-slate-400">Pemain B</div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Point Preview -->
+            <div id="point-preview" class="hidden bg-violet-500/10 border border-violet-500/20 rounded-xl p-4">
+              <div class="text-xs text-slate-400 mb-2 font-medium uppercase tracking-wider">Preview Poin</div>
+              <div id="point-preview-text" class="text-sm space-y-1"></div>
+            </div>
+
+            <button id="btn-submit-result" onclick="submitResult()"
+              class="w-full py-4 rounded-xl bg-violet-600 hover:bg-violet-700 font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled>
+              Submit Hasil Match
+            </button>
+          </div>
+        </div>
+
+        <!-- ===== TAB: MATCH HISTORY ===== -->
+        <div id="tab-history" class="hidden p-4 md:p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold">Riwayat Match</h2>
+            <button onclick="loadHistory()"
+              class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-sm hover:bg-white/10">
+              🔄 Refresh
+            </button>
+          </div>
+          <div id="history-list" class="space-y-2 max-w-2xl">
+            <div class="text-slate-400 text-center py-8">Memuat...</div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <!-- ===== MODAL: SET HANDICAP ===== -->
+    <div id="modal-hc" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+      <div class="card-glass rounded-2xl p-6 w-full max-w-sm">
+        <h3 class="font-bold text-lg mb-4">Set Handicap</h3>
+        <p id="modal-hc-name" class="text-slate-400 text-sm mb-4"></p>
+        <div class="grid grid-cols-3 gap-2 mb-6">
+          <button onclick="selectHC('3B')" data-hc="3B"
+            class="hc-btn py-3 rounded-xl border border-white/10 font-semibold text-sm hover:border-violet-500 transition-all">3B</button>
+          <button onclick="selectHC('3A')" data-hc="3A"
+            class="hc-btn py-3 rounded-xl border border-white/10 font-semibold text-sm hover:border-violet-500 transition-all">3A</button>
+          <button onclick="selectHC('3+')" data-hc="3+"
+            class="hc-btn py-3 rounded-xl border border-white/10 font-semibold text-sm hover:border-violet-500 transition-all">3+</button>
+          <button onclick="selectHC('4B')" data-hc="4B"
+            class="hc-btn py-3 rounded-xl border border-white/10 font-semibold text-sm hover:border-violet-500 transition-all">4B</button>
+          <button onclick="selectHC('4A')" data-hc="4A"
+            class="hc-btn py-3 rounded-xl border border-white/10 font-semibold text-sm hover:border-violet-500 transition-all">4A</button>
+          <button onclick="selectHC('4+')" data-hc="4+"
+            class="hc-btn py-3 rounded-xl border border-white/10 font-semibold text-sm hover:border-violet-500 transition-all">4+</button>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="closeModal('modal-hc')"
+            class="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:bg-white/5 transition-all text-sm">
+            Batal
+          </button>
+          <button id="btn-save-hc" onclick="saveHC()" disabled
+            class="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+            Simpan
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL: RESET PASSWORD ===== -->
+    <div id="modal-pw" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+      <div class="card-glass rounded-2xl p-6 w-full max-w-sm">
+        <h3 class="font-bold text-lg mb-4">Reset Password</h3>
+        <p id="modal-pw-name" class="text-slate-400 text-sm mb-4"></p>
+        <input id="new-password" type="password" placeholder="Password baru (min 6 karakter)" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500
+             focus:border-violet-500 transition-all mb-4" />
+        <div class="flex gap-3">
+          <button onclick="closeModal('modal-pw')"
+            class="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:bg-white/5 transition-all text-sm">
+            Batal
+          </button>
+          <button onclick="savePassword()"
+            class="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 font-semibold text-sm transition-all">
+            Reset
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL: EVENT RESET ===== -->
+    <div id="modal-event" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+      <div class="card-glass rounded-2xl p-6 w-full max-w-sm">
+        <div class="text-center mb-4">
+          <div class="text-4xl mb-3">⚠️</div>
+          <h3 class="font-bold text-lg">Event Reset</h3>
+        </div>
+        <p class="text-slate-300 text-sm text-center mb-6">
+          Ini akan mereset <strong class="text-white">semua poin, win, lose, dan streak</strong> seluruh pemain.
+          Aksi ini tidak dapat dibatalkan!
+        </p>
+        <div class="flex gap-3">
+          <button onclick="closeModal('modal-event')"
+            class="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:bg-white/5 transition-all text-sm">
+            Batal
+          </button>
+          <button onclick="doEventReset()"
+            class="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 font-semibold text-sm transition-all">
+            Ya, Reset Sekarang
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL: RESET LIMIT ===== -->
+    <div id="modal-reset-limit" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+      <div class="card-glass rounded-2xl p-6 w-full max-w-sm">
+        <div class="text-center mb-4">
+          <div class="text-4xl mb-3">⚠️</div>
+          <h3 class="font-bold text-lg">Reset Limit</h3>
+        </div>
+        <p class="text-slate-300 text-sm text-center mb-6">
+          Ini akan mereset <strong class="text-white">limit harian</strong>
+          pada pemain <span id="reset-limit-player-name"></span>.
+          Aksi ini tidak dapat dibatalkan!
+        </p>
+        <div class="flex gap-3">
+          <button onclick="closeModal('modal-reset-limit')"
+            class="flex-1 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:bg-white/5 transition-all text-sm">
+            Batal
+          </button>
+          <button onclick="resetLimit()"
+            class="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 font-semibold text-sm transition-all">
+            Ya, Reset Sekarang
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+
+</html>

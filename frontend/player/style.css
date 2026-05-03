@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+* {
+   font-family: 'Inter', sans-serif;
+}
+
+.gradient-bg {
+   background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+}
+
+.card-glass {
+   background: rgba(255, 255, 255, 0.05);
+   backdrop-filter: blur(12px);
+   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn-fight {
+   background: linear-gradient(135deg, #7c3aed, #4f46e5);
+}
+
+.btn-fight:hover:not(:disabled) {
+   background: linear-gradient(135deg, #6d28d9, #4338ca);
+   transform: translateY(-1px);
+}
+
+.btn-fight:disabled {
+   background: #374151;
+   cursor: not-allowed;
+   opacity: 0.6;
+}
+
+.pulse-ring {
+   animation: pulse-ring 1.5s ease-out infinite;
+}
+
+@keyframes pulse-ring {
+   0% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.7);
+   }
+
+   70% {
+      transform: scale(1);
+      box-shadow: 0 0 0 20px rgba(124, 58, 237, 0);
+   }
+
+   100% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 rgba(124, 58, 237, 0);
+   }
+}
+
+.countdown-ring {
+   stroke-dasharray: 283;
+   stroke-dashoffset: 283;
+   animation: countdown linear forwards;
+}
+
+@keyframes countdown {
+   to {
+      stroke-dashoffset: 0;
+   }
+}
+
+.tab-active {
+   background: rgba(124, 58, 237, 0.3);
+   border-color: #7c3aed;
+   color: white;
+}
+
+::-webkit-scrollbar {
+   width: 4px;
+}
+
+::-webkit-scrollbar-track {
+   background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+   background: rgba(124, 58, 237, 0.4);
+   border-radius: 4px;
+}
