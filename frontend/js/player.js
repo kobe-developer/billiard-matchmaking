@@ -1,4 +1,4 @@
-const API = window.location.origin + '/backend';
+const API = 'http://localhost:3000';
 
 // ============================================================
 // STATE
@@ -10,7 +10,7 @@ let pollInterval = null;
 let lbInterval = null;
 let cooldownInterval = null;
 let fightDebounce = false;
-let currentTab = 'dashboard';
+let currentTab = 'leaderboard';
 let isCountdownRunning = false;
 let lastStatus = null;
 let matchTimer = null;
@@ -228,7 +228,7 @@ async function updateFightButton() {
 // ============================================================
 function showTab(tab) {
    currentTab = tab;
-   ['dashboard', 'leaderboard'].forEach(t => {
+   ['dashboard', 'leaderboard', 'history'].forEach(t => {
       document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== tab);
       const navBtn = document.querySelector(`[data-tab="${t}"]`);
       if (navBtn) {
@@ -237,14 +237,81 @@ function showTab(tab) {
       }
    });
 
+   if (tab === 'dashboard') {
+      if (lbInterval) { clearInterval(lbInterval); lbInterval = null; }
+      loadPlayerData();
+      return;
+   }
+
    if (tab === 'leaderboard') {
       fetchLeaderboard();
       stopMatchCheck();
       if (!lbInterval) lbInterval = setInterval(fetchLeaderboard, 5000);
-   } else {
-      if (lbInterval) { clearInterval(lbInterval); lbInterval = null; }
-      loadPlayerData();
+      return;
    }
+
+   if (tab === 'history') {
+      loadPlayerData().then(() => loadHistory());
+   }
+}
+
+// ============================================================
+// MATCH HISTORY
+// ============================================================
+async function loadHistory() {
+   try {
+      const res = await apiFetch('/api/match/history?limit=30');
+      renderHistory(res.history);
+   } catch (e) {
+      console.log(e);
+      showToast('Gagal memuat history', 'error');
+   }
+}
+
+function hcColorHex(hc) {
+   const map = { '3B': '#64748b', '3A': '#3b82f6', '3+': '#06b6d4', '4B': '#7c3aed', '4A': '#9333ea', '4+': '#ca8a04' };
+   return map[hc] || '#6b7280';
+}
+
+function timeAgo(dateStr) {
+   const diff = Date.now() - new Date(dateStr).getTime();
+   const mins = Math.floor(diff / 60000);
+   if (mins < 1) return 'baru saja';
+   if (mins < 60) return `${mins} mnt lalu`;
+   const hrs = Math.floor(mins / 60);
+   if (hrs < 24) return `${hrs} jam lalu`;
+   return `${Math.floor(hrs / 24)} hari lalu`;
+}
+
+function renderHistory(history) {
+   const el = document.getElementById('history-list');
+   if (!history || history.length === 0) {
+      el.innerHTML = '<div class="card-glass rounded-xl text-center py-8 text-slate-400">Belum ada riwayat match</div>';
+      return;
+   }
+
+   function matchStatusWinner(name) {
+      return playerData.name === name ? 'Win +' : 'Lose -';
+   }
+
+   el.innerHTML = history.map(h => `
+      <div class="card-glass rounded-xl px-4 py-3 flex items-center gap-3">
+      <div class="flex-1 min-w-0">
+         <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-semibold text-sm ${h.winner_name === h.player1_name ? 'text-green-400' : 'text-slate-300'}">${h.player1_name}</span>
+            ${h.player1_hc ? `<span class="badge text-white text-xs" style="background:${hcColorHex(h.player1_hc)}">${h.player1_hc}</span>` : ''}
+            <span class="text-slate-600">vs</span>
+            <span class="font-semibold text-sm ${h.winner_name === h.player2_name ? 'text-green-400' : 'text-slate-300'}">${h.player2_name}</span>
+            ${h.player2_hc ? `<span class="badge text-white text-xs p-1/5" style="background:${hcColorHex(h.player2_hc)}">${h.player2_hc}</span>` : ''}
+         </div>
+         <div class="text-xs text-slate-400 mt-0.5">
+            ${matchStatusWinner(h.winner_name)}${h.points_gained} point
+            ${h.penalty_applied > 0 ? `<span class="text-yellow-400">(penalti -${h.penalty_applied})</span>` : ''}
+         </div>
+      </div>
+      <div class="text-xs text-slate-500 whitespace-nowrap">${timeAgo(h.created_at)}</div>
+      </div>
+   `).join('');
 }
 
 // ============================================================
@@ -461,6 +528,34 @@ async function fetchLeaderboard() {
    } catch (e) { }
 }
 
+function getStatusBadge(lastSeen) {
+   function template(color) {
+      return `
+         <span class="relative flex h-2.5 w-2.5">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-${color}-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-${color}-500 border border-zinc-900 shadow-sm"></span>
+         </span>
+      `;
+   }
+
+   if (!lastSeen) return template('slate');
+
+   const now = new Date();
+   const lastActive = new Date(lastSeen);
+   const diffInMinutes = (now - lastActive) / 1000 / 60;
+
+   return template(diffInMinutes < 3 ? 'green' : 'slate');
+}
+
+function getRankDetails(points) {
+   if (points <= 100) return { name: 'Prima', color: 'bg-[#8B4513] text-white' }; // Coklat
+   if (points <= 200) return { name: 'Velox', color: 'bg-slate-400 text-slate-900' }; // Abu
+   if (points <= 300) return { name: 'Apex', color: 'bg-yellow-400 text-yellow-950' }; // Kuning
+   if (points <= 400) return { name: 'Kairo', color: 'bg-red-600 text-white' }; // Merah
+   if (points <= 500) return { name: 'Karno', color: 'bg-gradient-to-r from-red-600 to-yellow-500 text-white' }; // Merah ke Emas
+   return { name: 'Imperium', color: 'bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-500 text-yellow-950 shadow-[0_0_10px_rgba(250,204,21,0.4)]' }; // Emas Mewah
+}
+
 function renderLeaderboard(data) {
    const el = document.getElementById('leaderboard-list');
    if (!data || data.length === 0) {
@@ -469,37 +564,60 @@ function renderLeaderboard(data) {
    }
 
    const medals = ['🥇', '🥈', '🥉'];
-   el.innerHTML = data.map((p, i) => `
-      <div class="card-glass rounded-xl px-4 py-3 flex items-center gap-3
-      ${playerData && p.id === playerData.id ? 'border border-violet-500/50' : ''}">
-      <div class="text-lg w-8 text-center font-bold ${i < 3 ? '' : 'text-slate-500'}">
-         ${i < 3 ? medals[i] : i + 1}
-      </div>
-      <div class="flex-1 min-w-0 flex items-center gap-3">
-         <div class="w-8 h-8 rounded-full bg-slate-700 flex-shrink-0 overflow-hidden border border-slate-600 shadow-inner">
-            <img
-            src="${p.avatar}"
-            alt="${p.name}"
-            class="w-full h-full object-cover"
-            onerror="this.style.display='none'; this.parentElement.classList.add('bg-violet-600');"
-            />
+   el.innerHTML = data.map((p, i) => {
+      const rank = getRankDetails(p.points);
+      const isUser = playerData && p.id === playerData.id;
+
+      return `
+      <div class="card-glass rounded-xl px-4 py-3 flex items-center gap-3 mb-2
+      ${isUser ? 'border border-violet-500/50 bg-violet-500/10' : ''}">
+
+         <!-- Ranking Number/Medal -->
+         <div class="flex-shrink-0 w-10 text-center font-black text-[40px] ${i < 3 ? '' : 'text-slate-600 font-mono'}">
+            ${i < 3 ? medals[i] : i + 1}
          </div>
 
-         <div class="min-w-0 flex flex-col justify-center">
-            <div class="font-semibold truncate text-sm leading-tight ${playerData && p.id === playerData.id ? 'text-violet-300' : ''}">
-            ${p.name} ${playerData && p.id === playerData.id ? '(Kamu)' : ''}
+         <!-- Avatar & Info -->
+         <div class="flex-1 min-w-0 flex items-center gap-3">
+            <div class="relative flex-shrink-0">
+               <div class="w-10 h-10 rounded-full bg-slate-700 overflow-hidden border border-slate-600 shadow-inner">
+                  <img
+                     src="${p.avatar}"
+                     alt="${p.name}"
+                     class="w-full h-full object-cover"
+                     onerror="this.style.display='none'; this.parentElement.classList.add('bg-violet-600');"
+                  />
+               </div>
+               <!-- Online Status -->
+               <div class="absolute -bottom-0.5 -right-0.5">
+                  ${getStatusBadge(p.last_seen)}
+               </div>
             </div>
-            <div class="text-[10px] text-slate-400 leading-tight">
-            ${p.win}W / ${p.lose}L
+
+            <div class="min-w-0 flex flex-col justify-center">
+               <div class="font-semibold truncate text-sm leading-tight ${isUser ? 'text-violet-300' : 'text-zinc-100'}">
+                  ${p.name} ${isUser ? '<span class="text-[10px] opacity-70">(Kamu)</span>' : ''}
+               </div>
+               <!-- Ranking Name Tag -->
+               <div class="flex items-center gap-2 mt-1">
+                  <span class="text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider ${rank.color}">
+                     ${rank.name}
+                  </span>
+               </div>
+            </div>
+         </div>
+
+         <!-- Stats & Points -->
+         <div class="text-right flex flex-col items-end">
+            <div class="text-[10px] text-slate-400 leading-tight mb-1 uppercase font-medium">
+               ${p.win}W / ${p.lose}L
+            </div>
+            <div class="text-violet-400 font-black text-sm leading-none italic">
+               ${p.points} <span class="text-[10px] font-normal opacity-70 not-italic">PTS</span>
             </div>
          </div>
       </div>
-      <div class="text-right">
-         ${p.hc ? `<span class="text-xs px-1.5 py-0.5 rounded-full text-white font-semibold ${hcColor(p.hc)}">${p.hc}</span>` : ''}
-         <div class="text-violet-400 font-bold text-sm mt-0.5">${p.points} pts</div>
-      </div>
-      </div>
-   `).join('');
+   `}).join('');
 }
 
 // ============================================================
@@ -556,6 +674,7 @@ function createaAvatarChoises() {
 
    choices.innerHTML = avatars;
 }
+
 
 // ============================================================
 // BOOT

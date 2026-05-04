@@ -289,6 +289,7 @@ export const matchRoutes = new Elysia({ prefix: "/api/match" })
       return { error: "Unauthorized" };
     }
 
+    await query('update players set last_seen = now() where id = $1', [user.playerId]);
     const res = await query(
       `SELECT p.id, p.name, p.hc, p.points, p.win, p.lose,
               p.daily_match, p.streak, p.cooldown_until
@@ -299,6 +300,34 @@ export const matchRoutes = new Elysia({ prefix: "/api/match" })
 
     if (res.rowCount === 0) return { error: "Player tidak ditemukan" };
     return res.rows[0];
+  })
+  .get("/history", async ({ query: q, bearer, jwt, set }) => {
+    const user = await parseUserBearerToken(jwt, bearer);
+
+    if (!user) {
+      set.status = 401;
+      return { error: "Unauthorized" };
+    }
+
+    const limit = Math.min(Number(q.limit) || 50, 100);
+    const offset = Number(q.offset) || 0;
+
+    const res = await query(
+      `SELECT mh.id, mh.created_at, mh.points_gained, mh.penalty_applied,
+              p1.name as player1_name, p1.hc as player1_hc,
+              p2.name as player2_name, p2.hc as player2_hc,
+              pw.name as winner_name
+       FROM match_history mh
+       JOIN players p1 ON p1.id = mh.player1_id
+       JOIN players p2 ON p2.id = mh.player2_id
+       LEFT JOIN players pw ON pw.id = mh.winner_id
+       WHERE p1.id = $3 OR p2.id = $3
+       ORDER BY mh.created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset, user.playerId]
+    );
+
+    return { history: res.rows, limit, offset };
   })
   .get("/active", async ({ set, bearer, jwt }) => {
     const user = await parseUserBearerToken(jwt, bearer);

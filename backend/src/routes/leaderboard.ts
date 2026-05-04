@@ -5,9 +5,10 @@ export const leaderboardRoutes = new Elysia({ prefix: "/api" }).get(
   "/leaderboard",
   async () => {
     const res = await query(
-      `SELECT p.id, p.name, p.hc, p.points, p.win, p.lose, p.avatar,
+      `SELECT p.id, p.name, p.hc, p.points, p.win, p.lose, p.avatar, p.last_seen,
               RANK() OVER (ORDER BY p.points DESC, p.win DESC) as rank
        FROM players p
+       WHERE p.hc IS NOT NULL
        ORDER BY p.points DESC, p.win DESC
        LIMIT 50`
     );

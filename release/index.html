@@ -1,0 +1,7 @@
+<script>
+   (function init() {
+      const tk = localStorage.getItem('bp_token');
+      const role = localStorage.getItem('bp_role');
+      window.location.href = tk && role === 'staff' ? 'staff.html' : 'player.html';
+   })();
+</script>

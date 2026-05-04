@@ -247,7 +247,6 @@ export const staffRoutes = new Elysia({ prefix: "/api/staff" })
       }),
     }
   )
-
   .get("/match/history", async ({ query: q }) => {
     const limit = Math.min(Number(q.limit) || 50, 100);
     const offset = Number(q.offset) || 0;
@@ -267,6 +266,49 @@ export const staffRoutes = new Elysia({ prefix: "/api/staff" })
     );
 
     return { history: res.rows, limit, offset };
+  })
+  .get("/match/active", async ({ query: q }) => {
+    const res = await query(
+      `SELECT
+      a."id",
+      b."id" as player1_id,
+      b."name" as player1_name,
+      b."avatar" as player1_avatar,
+      c."id" as player2_id,
+      c."name" as player2_name,
+      c."avatar" as player2_avatar,
+      a.created_at
+      FROM
+      match_sessions a
+      JOIN players b ON a.player1_id = b."id"
+      JOIN players c ON a.player2_id = c."id"
+      WHERE a.created_at::DATE = CURRENT_DATE AND a.status = 'active'`,
+    );
+
+    return { match: res.rows };
+  })
+  .post("/match/cancel/:id", async ({ params, set }) => {
+    var session = await query('SELECT player1_id, player2_id FROM match_sessions WHERE id = $1', [params.id]);
+
+    if (session.rowCount === 0) {
+      set.status = 404;
+      return { message: 'match session tidak ditemukan' };
+    }
+
+    const player = session.rows[0];
+    await query('UPDATE players SET daily_match = daily_match - 1 WHERE id IN ($1,$2)', [
+      player.player1_id,
+      player.player2_id,
+    ]);
+
+    await query(
+      `UPDATE match_sessions SET status = 'canceled' WHERE id = $1`,
+      [params.id]
+    );
+
+    return { message: 'cancel match berhasil' };
+  }, {
+    params: t.Object({ id: t.Numeric() }),
   })
   .put("/event/reset", async () => {
     await query("UPDATE players SET points = 0, win = 0, lose = 0, streak = 0");

@@ -1,4 +1,4 @@
-const API = window.location.origin + '/backend';
+const API = 'http://localhost:3000';
 
 let allPlayers = [];
 let selectedPlayerId = null;
@@ -40,7 +40,7 @@ function doLogout() {
 function showApp() {
    document.getElementById('screen-login').classList.add('hidden');
    document.getElementById('screen-app').classList.remove('hidden');
-   switchTab('players');
+   switchTab('match');
 }
 
 // ============================================================
@@ -58,8 +58,110 @@ function switchTab(tab) {
    });
 
    if (tab === 'players') loadPlayers();
-   if (tab === 'match') { loadPlayers(); resetMatchForm(); }
+   if (tab === 'match') {
+      loadPlayers();
+      reloadMatchData();
+      resetMatchForm();
+   }
    if (tab === 'history') loadHistory();
+}
+
+// ============================================================
+// MATCH ON PROGRESS
+// ============================================================
+async function reloadMatchData() {
+   try {
+      document.getElementById('set-match-result').classList.add('hidden');
+      document.getElementById('match-active').classList.remove('hidden');
+
+      const res = await apiFetch('/api/staff/match/active');
+      renderMatchListView(res.match);
+   } catch (e) {
+      console.error(e.message);
+   }
+}
+
+function renderMatchListView(match) {
+   const matchActive = document.getElementById('match-active-data');
+
+   if (!match || match.length === 0) {
+      matchActive.innerHTML = `<p class="card-glass rounded-xl text-center py-8 text-slate-400">Tidak ada match.</p>`;
+      return;
+   }
+
+   const data = match.map(function (item) {
+      const itemData = JSON.stringify(item).replace(/"/g, '&quot;');
+
+      return `
+         <div class="card-glass rounded-xl text-center py-3 text-slate-400">
+            <div class="flex items-center justify-between relative">
+               <!-- Player 1 -->
+               <div class="flex flex-col items-center w-5/12">
+                  <div class="relative">
+                     <img src="${item.player1_avatar}" alt="${item.player1_name}"
+                           class="w-16 h-16 rounded-full border-2 border-indigo-500 object-cover shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+                     <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-zinc-900 rounded-full"></div>
+                  </div>
+                  <span class="mt-3 font-bold text-zinc-100 text-sm tracking-wide uppercase">${item.player1_name}</span>
+               </div>
+
+               <!-- Center Divider (VS) -->
+               <div class="flex flex-col items-center justify-center w-2/12">
+                  <div class="text-indigo-500 font-black text-xl italic tracking-tighter italic">VS</div>
+                  <div class="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent my-2"></div>
+                  <span class="text-[15px] font-mono text-zinc-500">${new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+               </div>
+
+               <!-- Player 2 -->
+               <div class="flex flex-col items-center w-5/12">
+                  <div class="relative">
+                     <img src="${item.player2_avatar}" alt="${item.player2_name}"
+                           class="w-16 h-16 rounded-full border-2 border-fuchsia-500 object-cover shadow-[0_0_15px_rgba(217,70,239,0.3)]">
+                     <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-zinc-900 rounded-full"></div>
+                  </div>
+                  <span class="mt-3 font-bold text-zinc-100 text-sm tracking-wide uppercase">${item.player2_name}</span>
+               </div>
+            </div>
+
+            <div class="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent my-2"></div>
+
+            <!-- Footer Card (Optional Status) -->
+            <div class="border-t border-zinc-800/50 flex items-center justify-center gap-10">
+               <button onclick="cancelMatch(${item.id})"
+                  class="bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white px-4 py-1.5 rounded-lg transition-all text-sm font-medium border border-red-600/30 hover:border-red-600 uppercase">
+                  cancel match
+               </button>
+               <button onclick="setWinner(${itemData})"
+                  class="bg-violet-600/20 text-violet-500 hover:bg-violet-600 hover:text-white px-4 py-1.5 rounded-lg transition-all text-sm font-medium border border-violet-600/30 hover:border-violet-600 uppercase">
+                  set winner
+               </button>
+            </div>
+         </div>
+        `;
+   }).join('');
+
+   matchActive.innerHTML = data;
+}
+
+async function cancelMatch(matchId) {
+   if (!confirm('Apakah Anda yakin ingin membatalkan pertandingan ini?')) return;
+
+   try {
+      const response = await apiFetch(`/api/staff/match/cancel/${matchId}`, { method: 'POST' });
+      showToast(response.message, 'success');
+
+      reloadMatchData();
+   } catch (e) {
+      showToast(e.message, 'error');
+   }
+}
+
+function setWinner(match) {
+   selectPlayer('a', match.player1_id);
+   selectPlayer('b', match.player2_id);
+
+   document.getElementById('set-match-result').classList.remove('hidden');
+   document.getElementById('match-active').classList.add('hidden');
 }
 
 // ============================================================
@@ -91,46 +193,44 @@ function renderPlayers(players) {
    }
 
    tbody.innerHTML = players.map(p => `
-          <tr class="table-row border-b border-white/5 transition-colors">
-            <td class="px-4 py-3">
-              <div class="font-semibold">${p.name}</div>
-              <div class="text-xs text-slate-400">@${p.username}</div>
-              <div class="flex items-center gap-1.5 mt-1 sm:hidden">
-                ${p.hc ? `<span class="badge text-white" style="background:${hcColorHex(p.hc)}">${p.hc}</span>` : '<span class="badge bg-white/10 text-slate-400">No HC</span>'}
-                <span class="text-xs text-violet-400">${p.points}pts</span>
-              </div>
-            </td>
-            <td class="px-4 py-3 text-center hidden sm:table-cell">
-              ${p.hc ? `<span class="badge text-white" style="background:${hcColorHex(p.hc)}">${p.hc}</span>` : '<span class="badge bg-white/10 text-slate-400">—</span>'}
-            </td>
-            <td class="px-4 py-3 text-center hidden md:table-cell text-violet-400 font-semibold">${p.points}</td>
-            <td class="px-4 py-3 text-center hidden md:table-cell">
-              <span class="text-green-400">${p.win}W</span> <span class="text-slate-600">/</span> <span class="text-red-400">${p.lose}L</span>
-            </td>
-            <td class="px-4 py-3 text-center hidden lg:table-cell">
-              <span class="${p.daily_match >= 3 ? 'text-red-400' : 'text-slate-300'} font-semibold">${p.daily_match}/3</span>
-              ${p.cooldown_until && new Date(p.cooldown_until) > new Date()
-         ? '<span class="block text-xs text-yellow-400">cooldown</span>'
-         : ''}
-            </td>
-            <td class="px-4 py-3">
-              <div class="flex gap-1 justify-end flex-wrap">
-                <button onclick="openHCModal(${p.id}, '${p.name}', '${p.hc || ''}')"
-                  class="px-2.5 py-1.5 rounded-lg bg-violet-500/20 text-violet-300 text-xs hover:bg-violet-500/30 transition-colors whitespace-nowrap">
-                  Set HC
-                </button>
-                <button onclick="openResetLimitModal(${p.id}, '${p.name}')"
-                  class="px-2.5 py-1.5 rounded-lg bg-blue-500/20 text-blue-300 text-xs hover:bg-blue-500/30 transition-colors whitespace-nowrap">
-                  Reset Limit
-                </button>
-                <button onclick="openPWModal(${p.id}, '${p.name}')"
-                  class="px-2.5 py-1.5 rounded-lg bg-orange-500/20 text-orange-300 text-xs hover:bg-orange-500/30 transition-colors whitespace-nowrap">
-                  Reset PW
-                </button>
-              </div>
-            </td>
-          </tr>
-        `).join('');
+      <tr class="table-row border-b border-white/5 transition-colors">
+         <td class="px-4 py-3">
+            <div class="font-semibold">${p.name}</div>
+            <div class="text-xs text-slate-400">@${p.username}</div>
+            <div class="flex items-center gap-1.5 mt-1 sm:hidden">
+               ${p.hc ? `<span class="badge text-white" style="background:${hcColorHex(p.hc)}">${p.hc}</span>` : '<span class="badge bg-white/10 text-slate-400">No HC</span>'}
+               <span class="text-xs text-violet-400">${p.points}pts</span>
+            </div>
+         </td>
+         <td class="px-4 py-3 text-center hidden sm:table-cell">
+            ${p.hc ? `<span class="badge text-white" style="background:${hcColorHex(p.hc)}">${p.hc}</span>` : '<span class="badge bg-white/10 text-slate-400">—</span>'}
+         </td>
+         <td class="px-4 py-3 text-center hidden md:table-cell text-violet-400 font-semibold">${p.points}</td>
+         <td class="px-4 py-3 text-center hidden md:table-cell">
+            <span class="text-green-400">${p.win}W</span> <span class="text-slate-600">/</span> <span class="text-red-400">${p.lose}L</span>
+         </td>
+         <td class="px-4 py-3 text-center hidden lg:table-cell">
+            <span class="${p.daily_match >= 3 ? 'text-red-400' : 'text-slate-300'} font-semibold">${p.daily_match}/3</span>
+            ${p.cooldown_until && new Date(p.cooldown_until) > new Date() ? '<span class="block text-xs text-yellow-400">cooldown</span>' : ''}
+         </td>
+         <td class="px-4 py-3">
+            <div class="flex gap-1 justify-end flex-wrap">
+               <button onclick="openHCModal(${p.id}, '${p.name}', '${p.hc || ''}')"
+               class="px-2.5 py-1.5 rounded-lg bg-violet-500/20 text-violet-300 text-xs hover:bg-violet-500/30 transition-colors whitespace-nowrap">
+               Set HC
+               </button>
+               <button onclick="openResetLimitModal(${p.id}, '${p.name}')"
+               class="px-2.5 py-1.5 rounded-lg bg-blue-500/20 text-blue-300 text-xs hover:bg-blue-500/30 transition-colors whitespace-nowrap">
+               Reset Limit
+               </button>
+               <button onclick="openPWModal(${p.id}, '${p.name}')"
+               class="px-2.5 py-1.5 rounded-lg bg-orange-500/20 text-orange-300 text-xs hover:bg-orange-500/30 transition-colors whitespace-nowrap">
+               Reset PW
+               </button>
+            </div>
+         </td>
+      </tr>
+   `).join('');
 }
 
 // Set Handicap
@@ -367,6 +467,7 @@ async function submitResult() {
       showToast(`${res.winner.name} menang! +${res.winner.points_gained} poin`, 'success');
       resetMatchForm();
       loadPlayers();
+      reloadMatchData();
    } catch (e) {
       showToast(e.message || 'Gagal submit hasil', 'error');
       btn.disabled = false;
@@ -410,23 +511,23 @@ function renderHistory(history) {
    }
 
    el.innerHTML = history.map(h => `
-          <div class="card-glass rounded-xl px-4 py-3 flex items-center gap-3">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-semibold text-sm ${h.winner_name === h.player1_name ? 'text-green-400' : 'text-slate-300'}">${h.player1_name}</span>
-                ${h.player1_hc ? `<span class="badge text-white text-xs" style="background:${hcColorHex(h.player1_hc)}">${h.player1_hc}</span>` : ''}
-                <span class="text-slate-600">vs</span>
-                <span class="font-semibold text-sm ${h.winner_name === h.player2_name ? 'text-green-400' : 'text-slate-300'}">${h.player2_name}</span>
-                ${h.player2_hc ? `<span class="badge text-white text-xs" style="background:${hcColorHex(h.player2_hc)}">${h.player2_hc}</span>` : ''}
-              </div>
-              <div class="text-xs text-slate-400 mt-0.5">
-                🏆 ${h.winner_name} +${h.points_gained} poin
-                ${h.penalty_applied > 0 ? `<span class="text-yellow-400">(penalti -${h.penalty_applied})</span>` : ''}
-              </div>
-            </div>
-            <div class="text-xs text-slate-500 whitespace-nowrap">${timeAgo(h.created_at)}</div>
-          </div>
-        `).join('');
+      <div class="card-glass rounded-xl px-4 py-3 flex items-center gap-3">
+      <div class="flex-1 min-w-0">
+         <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-semibold text-sm ${h.winner_name === h.player1_name ? 'text-green-400' : 'text-slate-300'}">${h.player1_name}</span>
+            ${h.player1_hc ? `<span class="badge text-white text-xs" style="background:${hcColorHex(h.player1_hc)}">${h.player1_hc}</span>` : ''}
+            <span class="text-slate-600">vs</span>
+            <span class="font-semibold text-sm ${h.winner_name === h.player2_name ? 'text-green-400' : 'text-slate-300'}">${h.player2_name}</span>
+            ${h.player2_hc ? `<span class="badge text-white text-xs" style="background:${hcColorHex(h.player2_hc)}">${h.player2_hc}</span>` : ''}
+         </div>
+         <div class="text-xs text-slate-400 mt-0.5">
+            🏆 ${h.winner_name} +${h.points_gained} poin
+            ${h.penalty_applied > 0 ? `<span class="text-yellow-400">(penalti -${h.penalty_applied})</span>` : ''}
+         </div>
+      </div>
+      <div class="text-xs text-slate-500 whitespace-nowrap">${timeAgo(h.created_at)}</div>
+      </div>
+   `).join('');
 }
 
 // ============================================================
