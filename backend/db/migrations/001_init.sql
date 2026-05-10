@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS players (
   name          VARCHAR(100) NOT NULL,
   avatar        VARCHAR(255),
   hc            VARCHAR(5) CHECK (hc IN ('3B', '3A', '3+', '4B', '4A', '4+')),
-  points        INTEGER NOT NULL DEFAULT 0,
+  points        INTEGER NOT NULL DEFAULT 100,
   win           INTEGER NOT NULL DEFAULT 0,
   lose          INTEGER NOT NULL DEFAULT 0,
   daily_match   INTEGER NOT NULL DEFAULT 0,

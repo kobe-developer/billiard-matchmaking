@@ -311,6 +311,6 @@ export const staffRoutes = new Elysia({ prefix: "/api/staff" })
     params: t.Object({ id: t.Numeric() }),
   })
   .put("/event/reset", async () => {
-    await query("UPDATE players SET points = 0, win = 0, lose = 0, streak = 0");
+    await query("UPDATE players SET points = 100, win = 0, lose = 0, streak = 0, hc = null");
     return { message: "Event reset: semua poin, win, lose, streak direset" };
   });
